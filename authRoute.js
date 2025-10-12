@@ -51,10 +51,10 @@ router.post("/login", (req, res) => {
 
     if (!isMatch)
       return res.status(401).json({ message: "Invalid email or password" });
-
+  
     // ✅ Generate JWT
     const token = jwt.sign(
-      { id: user.id, username: user.username },
+      { user_id: user.user_ID, username: user.username, church_id: user.church_id },
       process.env.JWT_SECRET,
       { expiresIn: "5h" }
     );
@@ -62,7 +62,7 @@ router.post("/login", (req, res) => {
     res.json({
       message: "Login successful",
       token,
-      user: { id: user.id, username: user.username, email: user.email },
+      user: { id: user.user_ID, username: user.username, email: user.email, church_id: user.church_id },
     });
   });
 });
@@ -81,6 +81,48 @@ router.get("/getallChurch", (req, res) => {
     });
 }       
 );  
+// Get profile details form user table 
+router.get("/getauser/:id", verifyToken, (req, res) => {    
+    const { id } = req.params; 
+
+    // Ensure the user can only access their own data
+      if (req.user.user_id != id) {
+        return res.status(403).json({ message: "Access denied" });
+    }
+    const query = "SELECT * FROM users WHERE user_ID = ?";
+    pool.query(query, [id], (err, results) => {
+      if (err) {
+        console.error("❌ Database query error:", err);
+        return res.status(500).json({ error: err.message });
+      }       
+        res.json(results[0]);          
+    }
+);  
+}); 
+
+// Load Type of products of particular church using church id and verifuy using user id from token
+router.get("/getproductsbychurch/:church_id", verifyToken, (req, res) => {    
+    const { church_id } = req.params; 
+    console.log("User ID from token:", req.user.church_id);   
+    console.log("Requested church ID:", church_id);
+    // Ensure the user can only access their own church data
+      if (req.user.church_id != church_id) {
+        return res.status(403).json({ message: "Access denied" });
+    } 
+    const query = "SELECT * FROM seller_prices JOIN products ON seller_prices.product_id = products.product_id WHERE seller_prices.church_id = ?";
+    pool.query(query, [church_id], (err, results) => {
+      if (err) {
+        console.error("❌ Database query error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+        res.json(results);
+    }
+);  
+}
+);
+
+
+
 
 
 module.exports = router;
