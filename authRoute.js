@@ -103,8 +103,6 @@ router.get("/getauser/:id", verifyToken, (req, res) => {
 // Load Type of products of particular church using church id and verifuy using user id from token
 router.get("/getproductsbychurch/:church_id", verifyToken, (req, res) => {    
     const { church_id } = req.params; 
-    console.log("User ID from token:", req.user.church_id);   
-    console.log("Requested church ID:", church_id);
     // Ensure the user can only access their own church data
       if (req.user.church_id != church_id) {
         return res.status(403).json({ message: "Access denied" });
