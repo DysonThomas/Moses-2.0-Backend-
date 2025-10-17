@@ -217,7 +217,47 @@ router.get("/getrole/:user_id", verifyToken, (req, res) => {
     res.json(results[0]);
   });
 });
+router.get("/getchurchidbyuserid/:user_id", verifyToken, (req, res) => {  
+  const { user_id } = req.params;
 
+  if (req.user.user_id != user_id) {
+    return res.status(403).json({ message: "Access denied" });
+  }
+  const query = "SELECT church_id FROM user_profile WHERE user_ID = ?";  
+  pool.query(query, [user_id], (err, results) => {
+    if (err) {
 
+      console.error("❌ Database query error:", err);
+      return res.status(500).json({ error: err.message });
+    }   
+    if (results.length === 0) {
+      return res.status(404).json({ message: "Church ID not found for user" });
+    } 
+    res.json({ church_id: results[0].church_id });
+  }
+);  
+}
+
+);
+// api to update the cost of productsusing product id 
+router.put("/updateproductprice/:product_id", verifyToken, (req, res) => {
+  const { product_id } = req.params;
+  const { price } = req.body;
+  const query = `
+    UPDATE seller_prices
+    SET price = ?
+    WHERE id = ?
+  `;
+  pool.query(query, [price,product_id], (err, result) => {
+    if (err) {
+      console.error("❌ Database update error:", err);
+      return res.status(500).json({ error: err.message });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+    res.json({ message: "Product cost updated successfully" });
+  });
+});
 
 module.exports = router;
