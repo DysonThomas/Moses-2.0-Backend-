@@ -5,6 +5,7 @@ const config = require("./config");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const verifyToken = require("./verifyToken");
+const Razorpay = require('razorpay');
 
 const pool = mysql.createPool(config);
 
@@ -68,7 +69,7 @@ router.post("/login", (req, res) => {
   });
 });
 router.get("/protected", verifyToken, (req, res) => {
-  res.json({ message: "This is protected", user: req.user });
+  res.json({ message: "This is protected",cstatus : 'verified', user: req.user });
 });
 
 router.get("/getallChurch", (req, res) => {    
@@ -259,5 +260,160 @@ router.put("/updateproductprice/:product_id", verifyToken, (req, res) => {
     res.json({ message: "Product cost updated successfully" });
   });
 });
+
+// Delete a product using product id 
+router.delete("/deleteproduct/:product_id", verifyToken, (req, res) => {
+  const { product_id } = req.params;
+  const query = `
+    DELETE FROM seller_prices
+    WHERE id = ?
+  `;
+  pool.query(query, [product_id], (err, result) => {
+    if (err) {
+      console.error("❌ Database delete error:", err);
+      return res.status(500).json({ error: err.message });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+    res.json({ message: "Product deleted successfully" });
+  });
+});
+
+router.get("/getallproducts", (req, res) => {    
+    const query = "SELECT * FROM products";
+    pool.query(query, (err, results) => {
+      if (err) {
+        console.error("❌ Database query error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+        res.json(results);          
+    } 
+);  
+}   
+);
+
+// add a product to seller_prices table 
+router.post("/addproduct", verifyToken, (req, res) => {
+  const { church_id, product_id, price } = req.body;
+  const query = `
+    INSERT INTO seller_prices (church_id, product_id, price)
+    VALUES (?, ?, ?)
+  `;  
+  pool.query(
+    query,
+    [church_id, product_id, price],
+    (err, result) => {
+      if (err) {
+        console.error("❌ Database insert error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+      res.status(201).json({ message: "Product price added successfully", id: result.insertId });
+    }
+  );
+} 
+);  
+
+// api to add razorpay key details
+router.post("/addrazorpaykeys", verifyToken, (req, res) => {
+  const { church_id, key_id, key_secret } = req.body;
+  const query = `
+    INSERT INTO paymentconfig (church_id, api_key, password)
+    VALUES (?, ?, ?)
+  `;
+  pool.query(query, [church_id, key_id, key_secret], (err, result) => {
+    if (err) {
+      console.error("❌ Database insert error:", err);
+      return res.status(500).json({ error: err.message });
+    }
+    res.status(201).json({ message: "Razorpay key added successfully", id: result.insertId });
+  });
+});
+
+// api to get razorpay key details by church id
+router.get("/getrazorpaykeys/:church_id", verifyToken, (req, res) => {
+  const { church_id } = req.params;
+  const query = `
+    SELECT api_key, password
+    FROM paymentconfig
+    WHERE church_id = ?
+  `;
+  pool.query(query, [church_id], (err, results) => {
+    if (err) {
+      console.error("❌ Database query error:", err);
+      return res.status(500).json({ error: err.message });
+    }
+    if (results.length === 0) {
+      return res.status(404).json({ message: "Razorpay keys not found for church" });
+    }
+    res.json(results[0]);
+  });
+});
+
+// api to delete razorpay key details by church id
+router.delete("/deleterazorpaykey/:church_id", verifyToken, (req, res) => {
+  const { church_id } = req.params;
+  const query = `
+    DELETE FROM paymentconfig
+    WHERE church_id = ?
+  `;
+  pool.query(query, [church_id], (err, result) => {
+    if (err) {  
+      console.error("❌ Database delete error:", err);
+      return res.status(500).json({ error: err.message });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Razorpay keys not found for church" });
+    }
+    res.json({ message: "Razorpay keys deleted successfully" });
+  }
+);
+});
+// create order forrazorpay
+router.post("/createorder", verifyToken, async (req, res) => {
+  const { amount, currency, church_id } = req.body;
+
+  try {
+    const keys =await getPaymentkeys(church_id);
+  
+    const razorpay = new Razorpay({
+      key_id: keys.api_key,
+      key_secret: keys.password,
+    });
+    const data = await razorpay.orders.create({
+      amount: amount * 100, // Razorpay expects amount in smallest currency unit (paise for INR)
+      currency: currency,
+      receipt: 'RCP_ID_' + Date.now(),
+    });
+
+    res.json({
+      amount: data.amount,
+      id: data.id,
+    });
+  } catch (error) {
+    console.error("❌ Razorpay order creation error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+getPaymentkeys = (church_id) => {
+  return new Promise((resolve, reject) => {
+    const query = `
+      SELECT api_key, password
+      FROM paymentconfig
+      WHERE church_id = ?
+    `;
+
+    pool.query(query, [church_id], (err, results) => {
+      if (err) {
+        return reject(err);
+      }
+      if (results.length === 0) {
+        return reject(new Error("No payment keys found"));
+      }
+      resolve(results[0]);
+    });
+  });
+};
+
 
 module.exports = router;
