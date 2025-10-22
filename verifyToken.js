@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 
 function verifyToken(req, res, next) {
-  
+ 
   const authHeader = req.headers["authorization"];
   if (!authHeader) return res.status(401).json({ message: "No token provided" });
 
@@ -18,5 +18,8 @@ function verifyToken(req, res, next) {
     next();
   });
 }
+
+// api to add data in order table
+
 
 module.exports = verifyToken;

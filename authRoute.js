@@ -291,18 +291,32 @@ router.get("/getallproducts", (req, res) => {
     } 
 );  
 }   
+
 );
+router.get("/getproducts", (req, res) => {    
+    const query = "SELECT *,c.isRegular FROM products p join seller_prices c ON c.product_id=p.product_id";
+    pool.query(query, (err, results) => {
+      if (err) {
+        console.error("❌ Database query error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+        res.json(results);          
+    } 
+);  
+}   
+);
+
 
 // add a product to seller_prices table 
 router.post("/addproduct", verifyToken, (req, res) => {
-  const { church_id, product_id, price } = req.body;
+  const { church_id, product_id, price, isRegular } = req.body;
   const query = `
-    INSERT INTO seller_prices (church_id, product_id, price)
-    VALUES (?, ?, ?)
-  `;  
+    INSERT INTO seller_prices (church_id, product_id, price, isRegular)
+    VALUES (?, ?, ?, ?)
+  `;
   pool.query(
     query,
-    [church_id, product_id, price],
+    [church_id, product_id, price, isRegular],
     (err, result) => {
       if (err) {
         console.error("❌ Database insert error:", err);
@@ -383,12 +397,15 @@ router.post("/createorder", verifyToken, async (req, res) => {
     const data = await razorpay.orders.create({
       amount: amount * 100, // Razorpay expects amount in smallest currency unit (paise for INR)
       currency: currency,
-      receipt: 'RCP_ID_' + Date.now(),
+      receipt: 'RCP_ID_' + Date.now() + Math.floor(Math.random() * 10000)
     });
 
     res.json({
       amount: data.amount,
       id: data.id,
+      key: keys.api_key,
+      currency: data.currency,
+      status: data.status,
     });
   } catch (error) {
     console.error("❌ Razorpay order creation error:", error);
@@ -414,6 +431,138 @@ getPaymentkeys = (church_id) => {
     });
   });
 };
+
+router.post("/addorder", verifyToken, (req, res) => {
+  const { user_id, amount, currency, status, church_id ,order_id,payment_id,signature,products } = req.body;
+  const productsData = typeof products === "object" ? JSON.stringify(products) : products;
+  console
+  if (!user_id || !amount || !currency || !status || !church_id || !order_id || !payment_id) {
+  return res.status(400).json({ message: "Missing required fields" });
+}
+
+  const query = `
+    INSERT INTO orders (user_id,church_id,amount,currency, status,order_id,payment_id,signature,products)
+    VALUES (?, ?, ?, ?,?, ?, ?, ?,?)
+  `;
+
+  pool.query(query, [user_id,church_id,amount,currency, status,order_id,payment_id,signature,productsData], (err, result) => {
+    if (err) {
+      console.error("❌ Database insert error:", err);
+      return res.status(500).json({ error: err.message });
+    }
+
+    res.status(201).json({ message: "Order added successfully", order_id: result.insertId });
+  });
+});
+
+// api to fetch user orders based on user id
+router.get("/getuserorders/:user_id", verifyToken, (req, res) => {
+  console.log("Get User Orders endpoint hit");
+
+  const { user_id } = req.params;
+
+  if (req.user.user_id != user_id) {
+    return res.status(403).json({ message: "Access denied" });
+  }
+
+  const query = "SELECT * FROM orders WHERE user_id = ? Order BY created_at DESC";  
+  pool.query(query, [user_id], (err, results) => {
+    if (err) {
+      console.error("❌ Database query error:", err);
+      return res.status(500).json({ error: err.message });
+    }
+    res.json(results);
+  });
+});
+
+// api to get all orders using church id and date between
+router.post("/getchurchorders", verifyToken, (req, res) => {
+  console.log("Get Church Orders endpoint hit");
+  const { church_id,fromDate,toDate} = req.body;
+  console.log("Get Church Orders endpoint hit");  
+ const today = new Date().toISOString().slice(0, 10);
+const start = `${fromDate || today} 00:00:00`;
+const end = `${toDate || today} 23:59:59`;
+ console.log("Chruch ID:", church_id, "From:", start, "To:", end);
+  const query = `SELECT id,
+  	JSON_UNQUOTE(JSON_EXTRACT(p.json, '$.type')) AS type,
+    JSON_UNQUOTE(JSON_EXTRACT(p.json, '$.product_name')) AS product_name,
+    JSON_UNQUOTE(JSON_EXTRACT(p.json, '$.name')) AS customer_name
+FROM orders o,
+JSON_TABLE(o.products, '$[*]' 
+    COLUMNS (
+        json JSON PATH '$',
+        type VARCHAR(50) PATH '$.type',
+        price VARCHAR(50) PATH '$.price'
+    )
+) AS p WHERE
+o.church_id = ?
+      AND o.created_at BETWEEN ? AND ?
+    ORDER BY type desc`;
+  pool.query(query, [church_id, start, end], (err, results) => {
+    if (err) {
+      console.error("❌ Database query error:", err);
+      return res.status(500).json({ error: err.message });
+    }
+    res.json(results);
+  });
+});
+
+router.post("/getspecificorders", verifyToken, (req, res) => {
+ 
+  const { church_id, fromDate, toDate, pType } = req.body;
+  console.log("Get Specific Orders endpoint hit");
+ 
+
+  const today = new Date().toISOString().slice(0, 10);
+  const start = `${fromDate || today} 00:00:00`;
+  const end = `${toDate || today} 23:59:59`;
+
+   console.log("Church ID:", church_id, "From:", start, "To:", end, "Product Type:", pType);
+
+  let query = `
+    SELECT 
+      id,
+      JSON_UNQUOTE(JSON_EXTRACT(p.json, '$.type')) AS type,
+      JSON_UNQUOTE(JSON_EXTRACT(p.json, '$.product_name')) AS product_name,
+      JSON_UNQUOTE(JSON_EXTRACT(p.json, '$.name')) AS customer_name
+    FROM orders o,
+    JSON_TABLE(o.products, '$[*]' 
+      COLUMNS (
+        json JSON PATH '$',
+        type VARCHAR(50) PATH '$.type',
+        price VARCHAR(50) PATH '$.price'
+      )
+    ) AS p
+    WHERE o.church_id = ?
+      AND o.created_at BETWEEN ? AND ?
+  `;
+
+  const params = [church_id, start, end];
+
+  if (Array.isArray(pType) && pType.length > 0) {
+    // Multiple types
+    const placeholders = pType.map(() => '?').join(',');
+    query += ` AND type IN (${placeholders})`;
+    params.push(...pType);
+  } else if (pType) {
+    // Single type
+    query += ` AND type = ?`;
+    params.push(pType);
+  }
+
+  query += ` ORDER BY type DESC`;
+
+  pool.query(query, params, (err, results) => {
+    if (err) {
+      console.error("❌ Database query error:", err);
+      return res.status(500).json({ error: err.message });
+    }
+    res.json(results);
+  });
+});
+
+
 
 
 module.exports = router;
