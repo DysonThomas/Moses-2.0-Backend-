@@ -36,7 +36,7 @@ router.post("/register", async (req, res) => {
 });
 
 router.post("/login", (req, res) => {
-  console.log("Login endpoint hit");
+
   const { email, password } = req.body;
 
   if (!email || !password)
@@ -76,7 +76,7 @@ router.get("/getallChurch", (req, res) => {
     const query = "SELECT * FROM churchmaster"; 
     pool.query(query, (err, results) => {
       if (err) {
-        console.error("❌ Database query error:", err);
+       
         return res.status(500).json({ error: err.message });
       }
         res.json(results);          
@@ -94,7 +94,7 @@ router.get("/getauser/:id", verifyToken, (req, res) => {
     const query = "SELECT * FROM user_profile WHERE user_ID = ?";
     pool.query(query, [id], (err, results) => {
       if (err) {
-        console.error("❌ Database query error:", err);
+        
         return res.status(500).json({ error: err.message });
       }       
         res.json(results[0]);          
@@ -110,7 +110,7 @@ router.get("/getproductsbychurch/:church_id", verifyToken, (req, res) => {
     const query = "SELECT * FROM seller_prices JOIN products ON seller_prices.product_id = products.product_id WHERE seller_prices.church_id = ?";
     pool.query(query, [church_id], (err, results) => {
       if (err) {
-        console.error("❌ Database query error:", err);
+        
         return res.status(500).json({ error: err.message });
       }
         res.json(results);
@@ -122,7 +122,7 @@ router.get("/getproductsbychurch/:church_id", verifyToken, (req, res) => {
 router.post("/adduserprofile", (req, res) => {
   const { user_id,username, dob, housename,place,district,state,country,gender, phone_number,church_id } = req.body;
   // Get user ID from verified token
-  console.log("User Profile Data:", user_id);
+
 
   const query = `
     INSERT INTO user_profile
@@ -135,7 +135,7 @@ router.post("/adduserprofile", (req, res) => {
     [user_id,username, dob, housename,place,district,state,country,gender, phone_number,church_id],
     (err, result) => {
       if (err) {
-        console.error("❌ Database insert error:", err);
+       
         return res.status(500).json({ error: err.message });
       }
 
@@ -147,7 +147,7 @@ router.put("/updateuserprofile/:user_id", verifyToken, (req, res) => {
   const { user_id } = req.params;
 
   const { username, dob, housename, place, district, state, country, gender, phone_number } = req.body;
-  console.log("Update Profile Data:", user_id, req.body);
+ 
   
   // Ensure the user can only update their own profile
   if (req.user.user_id != user_id) {
@@ -169,7 +169,7 @@ router.put("/updateuserprofile/:user_id", verifyToken, (req, res) => {
     [username, formattedDob, housename, place, district, state, country, gender, formattedPhone, user_id],
     (err, result) => {
       if (err) {      
-        console.error("❌ Database update error:", err);
+      
         return res.status(500).json({ error: err.message });
       }     
       
@@ -190,7 +190,7 @@ router.get("/getuserprofile/:user_id", verifyToken, (req, res) => {
   const query = "SELECT * FROM user_profile WHERE user_ID = ?"; // ✅ Use user_ID to match database column  
   pool.query(query, [user_id], (err, results) => {
     if (err) {
-      console.error("❌ Database query error:", err);
+     
       return res.status(500).json({ error: err.message });
     }
     
@@ -208,7 +208,7 @@ router.get("/getrole/:user_id", verifyToken, (req, res) => {
   const query = "SELECT * FROM users WHERE user_ID = ?"; // ✅ Use user_ID to match database column  
   pool.query(query, [user_id], (err, results) => {
     if (err) {
-      console.error("❌ Database query error:", err);
+      
       return res.status(500).json({ error: err.message });
     }
     
@@ -228,7 +228,7 @@ router.get("/getchurchidbyuserid/:user_id", verifyToken, (req, res) => {
   pool.query(query, [user_id], (err, results) => {
     if (err) {
 
-      console.error("❌ Database query error:", err);
+   
       return res.status(500).json({ error: err.message });
     }   
     if (results.length === 0) {
@@ -251,7 +251,7 @@ router.put("/updateproductprice/:product_id", verifyToken, (req, res) => {
   `;
   pool.query(query, [price,product_id], (err, result) => {
     if (err) {
-      console.error("❌ Database update error:", err);
+     
       return res.status(500).json({ error: err.message });
     }
     if (result.affectedRows === 0) {
@@ -270,7 +270,7 @@ router.delete("/deleteproduct/:product_id", verifyToken, (req, res) => {
   `;
   pool.query(query, [product_id], (err, result) => {
     if (err) {
-      console.error("❌ Database delete error:", err);
+  
       return res.status(500).json({ error: err.message });
     }
     if (result.affectedRows === 0) {
@@ -284,7 +284,7 @@ router.get("/getallproducts", (req, res) => {
     const query = "SELECT * FROM products";
     pool.query(query, (err, results) => {
       if (err) {
-        console.error("❌ Database query error:", err);
+        
         return res.status(500).json({ error: err.message });
       }
         res.json(results);          
@@ -297,7 +297,7 @@ router.get("/getproducts", (req, res) => {
     const query = "SELECT *,c.isRegular FROM products p join seller_prices c ON c.product_id=p.product_id";
     pool.query(query, (err, results) => {
       if (err) {
-        console.error("❌ Database query error:", err);
+     
         return res.status(500).json({ error: err.message });
       }
         res.json(results);          
@@ -319,7 +319,7 @@ router.post("/addproduct", verifyToken, (req, res) => {
     [church_id, product_id, price, isRegular],
     (err, result) => {
       if (err) {
-        console.error("❌ Database insert error:", err);
+       
         return res.status(500).json({ error: err.message });
       }
       res.status(201).json({ message: "Product price added successfully", id: result.insertId });
@@ -337,7 +337,7 @@ router.post("/addrazorpaykeys", verifyToken, (req, res) => {
   `;
   pool.query(query, [church_id, key_id, key_secret], (err, result) => {
     if (err) {
-      console.error("❌ Database insert error:", err);
+    
       return res.status(500).json({ error: err.message });
     }
     res.status(201).json({ message: "Razorpay key added successfully", id: result.insertId });
@@ -354,7 +354,7 @@ router.get("/getrazorpaykeys/:church_id", verifyToken, (req, res) => {
   `;
   pool.query(query, [church_id], (err, results) => {
     if (err) {
-      console.error("❌ Database query error:", err);
+   
       return res.status(500).json({ error: err.message });
     }
     if (results.length === 0) {
@@ -373,7 +373,7 @@ router.delete("/deleterazorpaykey/:church_id", verifyToken, (req, res) => {
   `;
   pool.query(query, [church_id], (err, result) => {
     if (err) {  
-      console.error("❌ Database delete error:", err);
+     
       return res.status(500).json({ error: err.message });
     }
     if (result.affectedRows === 0) {
@@ -408,7 +408,7 @@ router.post("/createorder", verifyToken, async (req, res) => {
       status: data.status,
     });
   } catch (error) {
-    console.error("❌ Razorpay order creation error:", error);
+   
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -435,7 +435,6 @@ getPaymentkeys = (church_id) => {
 router.post("/addorder", verifyToken, (req, res) => {
   const { user_id, amount, currency, status, church_id ,order_id,payment_id,signature,products } = req.body;
   const productsData = typeof products === "object" ? JSON.stringify(products) : products;
-  console
   if (!user_id || !amount || !currency || !status || !church_id || !order_id || !payment_id) {
   return res.status(400).json({ message: "Missing required fields" });
 }
@@ -447,7 +446,7 @@ router.post("/addorder", verifyToken, (req, res) => {
 
   pool.query(query, [user_id,church_id,amount,currency, status,order_id,payment_id,signature,productsData], (err, result) => {
     if (err) {
-      console.error("❌ Database insert error:", err);
+      
       return res.status(500).json({ error: err.message });
     }
 
@@ -457,7 +456,7 @@ router.post("/addorder", verifyToken, (req, res) => {
 
 // api to fetch user orders based on user id
 router.get("/getuserorders/:user_id", verifyToken, (req, res) => {
-  console.log("Get User Orders endpoint hit");
+
 
   const { user_id } = req.params;
 
@@ -468,7 +467,7 @@ router.get("/getuserorders/:user_id", verifyToken, (req, res) => {
   const query = "SELECT * FROM orders WHERE user_id = ? Order BY created_at DESC";  
   pool.query(query, [user_id], (err, results) => {
     if (err) {
-      console.error("❌ Database query error:", err);
+     
       return res.status(500).json({ error: err.message });
     }
     res.json(results);
@@ -477,14 +476,15 @@ router.get("/getuserorders/:user_id", verifyToken, (req, res) => {
 
 // api to get all orders using church id and date between
 router.post("/getchurchorders", verifyToken, (req, res) => {
-  console.log("Get Church Orders endpoint hit");
+ 
   const { church_id,fromDate,toDate} = req.body;
-  console.log("Get Church Orders endpoint hit");  
+
  const today = new Date().toISOString().slice(0, 10);
 const start = `${fromDate || today} 00:00:00`;
 const end = `${toDate || today} 23:59:59`;
- console.log("Chruch ID:", church_id, "From:", start, "To:", end);
+
   const query = `SELECT id,
+   	JSON_UNQUOTE(JSON_EXTRACT(p.json, '$.status')) AS status,
   	JSON_UNQUOTE(JSON_EXTRACT(p.json, '$.type')) AS type,
     JSON_UNQUOTE(JSON_EXTRACT(p.json, '$.product_name')) AS product_name,
     JSON_UNQUOTE(JSON_EXTRACT(p.json, '$.name')) AS customer_name
@@ -501,7 +501,7 @@ o.church_id = ?
     ORDER BY type desc`;
   pool.query(query, [church_id, start, end], (err, results) => {
     if (err) {
-      console.error("❌ Database query error:", err);
+      
       return res.status(500).json({ error: err.message });
     }
     res.json(results);
@@ -511,18 +511,17 @@ o.church_id = ?
 router.post("/getspecificorders", verifyToken, (req, res) => {
  
   const { church_id, fromDate, toDate, pType } = req.body;
-  console.log("Get Specific Orders endpoint hit");
+  
  
 
   const today = new Date().toISOString().slice(0, 10);
   const start = `${fromDate || today} 00:00:00`;
   const end = `${toDate || today} 23:59:59`;
 
-   console.log("Church ID:", church_id, "From:", start, "To:", end, "Product Type:", pType);
-
   let query = `
     SELECT 
       id,
+      JSON_UNQUOTE(JSON_EXTRACT(p.json, '$.status')) AS status,
       JSON_UNQUOTE(JSON_EXTRACT(p.json, '$.type')) AS type,
       JSON_UNQUOTE(JSON_EXTRACT(p.json, '$.product_name')) AS product_name,
       JSON_UNQUOTE(JSON_EXTRACT(p.json, '$.name')) AS customer_name
@@ -555,14 +554,79 @@ router.post("/getspecificorders", verifyToken, (req, res) => {
 
   pool.query(query, params, (err, results) => {
     if (err) {
-      console.error("❌ Database query error:", err);
+      
       return res.status(500).json({ error: err.message });
     }
     res.json(results);
   });
 });
 
+router.post("/updateProductStatusByType", async (req, res) => {
+  const { type, fromDate, toDate, newStatus } = req.body;
+  console.log("Update Product Status Request:", req.body);
 
+  const today = new Date().toISOString().slice(0, 10);
+  const start = `${fromDate || today} 00:00:00`;
+  const end = `${toDate || today} 23:59:59`;
 
+  try {
+    let query = `SELECT * FROM orders WHERE created_at BETWEEN ? AND ?`;
+    const [orders] = await pool.promise().query(query, [start, end]);
+
+    // Get all orders within date range
+    if (!orders.length) {
+      return res.status(404).json({ message: "No orders found in date range" });
+    }
+
+    let totalUpdated = 0;
+
+    // Loop through orders and update product statuses
+    for (const order of orders) {
+      let products = order.products;
+      
+      if (typeof products === 'string') {
+        try {
+          products = JSON.parse(products);
+        } catch (err) {
+          console.error("❌ Invalid JSON for order:", order.id, err);
+          continue;
+        }
+      }
+
+      let updated = false;
+      products = products.map(prod => {
+        console.log("Checking product:", prod.type, "against", type);
+        
+        // ✅ Simple equality check
+        if (prod.type == type) {
+          console.log("✅ Match found! Updating status to:", newStatus);
+          prod.status = newStatus;
+          updated = true;
+        }
+        return prod;
+      });
+
+      // Save back only if something changed
+      if (updated) {
+        let query = "UPDATE orders SET products = ? WHERE id = ?";
+        await pool.promise().query(query, [JSON.stringify(products), order.id]);
+        totalUpdated++;
+      }
+    }
+
+    if (totalUpdated > 0) {
+      return res.json({ 
+        message: "Product statuses updated successfully", 
+        ordersUpdated: totalUpdated 
+      });
+    } else {
+      return res.json({ message: "No products matched the specified type" });
+    }
+
+  } catch (err) {
+    console.error("Server error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
 
 module.exports = router;
